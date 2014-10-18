@@ -57,6 +57,9 @@ class CreatePage(Page):
             lambda d: d.find_element_by_css_selector(self.CREATE)
         )
 
+    def hide_menu(self):
+        self.driver.execute_script(""" $('.head').hide(); """)
+
 
 class CampaignsPage(Page):
     PATH = '/ads/campaigns/'

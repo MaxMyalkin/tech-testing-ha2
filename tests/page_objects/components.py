@@ -123,44 +123,42 @@ class AdsForm(Component):
     def reset(self):
         web_driver_wait_element(self.driver, self.RESET_BUTTON).click()
 
+    def loading_image(self, driver):
+        images = driver.find_elements_by_css_selector('.banner-preview .banner-preview__img')
+        for image in images:
+            if image.value_of_css_property("width") == '90px':
+                return WebDriverWait(image, 30, 0.1).until(
+                    lambda d: d.value_of_css_property("background-image") is not None)
 
-class HidingSetting(Component):
-    INCOME = '[data-name="income_group"] .campaign-setting__value'
-    AGE = '[data-name="age"] .campaign-setting__value'
-
-    AGE_TYPE = 1
-    INCOME_TYPE = 2
-
-    def __init__(self, driver, type):
-        super(HidingSetting, self).__init__(driver)
-        self.type = type
-
-    @property
-    def element(self):
-        if self.type == self.AGE_TYPE:
-            return WebDriverWait(self.driver, 30, 0.1).until(
-                expected_conditions.element_to_be_clickable((By.CSS_SELECTOR, self.AGE)))
-        if self.type == self.INCOME_TYPE:
-            return WebDriverWait(self.driver, 30, 0.1).until(
-                expected_conditions.element_to_be_clickable((By.CSS_SELECTOR, self.INCOME)))
-
-    def get_text(self):
-        return self.element.text
+    def wait_picture(self):
+        WebDriverWait(self.driver, 30, 0.1).until(lambda d: self.loading_image(d))
 
 
 class Settings(Component):
+    WHOM = '[data-name="whom"]'
+    ALL_SETTINGS = '.all-settings'
+    SETTINGS_BODY = '.all-settings__body'
+
+    def wait_for_settings(self):
+        web_driver_wait_elements(self.driver, self.WHOM)
+        web_driver_wait_elements(self.driver, self.ALL_SETTINGS)
+        web_driver_wait_elements(self.driver, self.SETTINGS_BODY)
+
     @property
     def age(self):
+        self.wait_for_settings()
         return Slider(driver=self.driver)
 
     @property
     def income(self):
+        self.wait_for_settings()
         return Income(driver=self.driver)
 
 
-class Slider(HidingSetting):
+class Slider(Component):
     LEFT_SLIDER = '.range-slider__handle.range-slider__handle_left'
     RIGHT_SLIDER = '.range-slider__handle.range-slider__handle_right'
+    AGE = '[data-name="age"] .campaign-setting__value.js-setting-value'
 
     def toggle(self):
         self.element.click()
@@ -171,9 +169,6 @@ class Slider(HidingSetting):
             WebDriverWait(self.driver, 30, 0.1).until(
                 expected_conditions.invisibility_of_element_located((By.CSS_SELECTOR, self.LEFT_SLIDER)))
 
-    def __init__(self, driver):
-        super(Slider, self).__init__(driver, self.AGE_TYPE)
-
     @property
     def left_slider(self):
         return web_driver_wait_element(self.driver, self.LEFT_SLIDER)
@@ -181,6 +176,12 @@ class Slider(HidingSetting):
     @property
     def right_slider(self):
         return web_driver_wait_element(self.driver, self.RIGHT_SLIDER)
+
+    @property
+    def element(self):
+        web_driver_wait_element(self.driver, '[data-name="age"]')
+        return WebDriverWait(self.driver, 30, 0.1).until(
+            expected_conditions.visibility_of_element_located((By.CSS_SELECTOR, self.AGE)))
 
     def get_range(self):
         left = self.left_slider.text
@@ -196,14 +197,15 @@ class Slider(HidingSetting):
         action_chain.drag_and_drop_by_offset(web_driver_wait_element(self.driver, self.RIGHT_SLIDER), offset,
                                              0).perform()
 
+    def get_text(self):
+        return self.element.text
 
-class Income(HidingSetting):
+
+class Income(Component):
     GREATER = '#income_group-9288'
     MIDDLE = '#income_group-9287'
     LESS = '#income_group-9286'
-
-    def __init__(self, driver):
-        super(Income, self).__init__(driver, self.INCOME_TYPE)
+    INCOME = '[data-name="income_group"] .campaign-setting__value.js-setting-value'
 
     @property
     def greater(self):
@@ -217,6 +219,12 @@ class Income(HidingSetting):
     def less(self):
         return web_driver_wait_element(self.driver, self.LESS)
 
+    @property
+    def element(self):
+        web_driver_wait_element(self.driver, '[data-name="income_group"]')
+        return WebDriverWait(self.driver, 30, 0.1).until(
+            expected_conditions.visibility_of_element_located((By.CSS_SELECTOR, self.INCOME)))
+
     def toggle(self):
         self.element.click()
         if self.greater.is_displayed():
@@ -228,6 +236,9 @@ class Income(HidingSetting):
 
     def get_checked(self):
         return self.less.is_selected(), self.middle.is_selected(), self.greater.is_selected()
+
+    def get_text(self):
+        return self.element.text
 
 
 class Projection(Component):

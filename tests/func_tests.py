@@ -8,20 +8,6 @@ from selenium.webdriver.support.wait import WebDriverWait
 from tests.page_objects.components import BannerPreview
 from tests.page_objects.pages import CreatePage, CampaignsPage, AuthPage
 
-
-def hide_menu(driver):
-    driver.execute_script(""" $('.head').hide(); """)
-    # WebDriverWait(driver, 30, 0.1).until(EC.invisibility_of_element_located((By.CSS_SELECTOR, '#portal-menu__toolbar')))
-
-
-def loading_image(driver):
-    images = driver.find_elements_by_css_selector('.banner-preview .banner-preview__img')
-    for image in images:
-        if image.value_of_css_property("width") == '90px':
-            return WebDriverWait(image, 30, 0.1).until(
-                lambda d: d.value_of_css_property("background-image") is not None)
-
-
 def login(driver):
     auth_page = AuthPage(driver)
     auth_page.open()
@@ -50,6 +36,7 @@ class FunctionalTests(unittest.TestCase):
             command_executor='http://127.0.0.1:4444/wd/hub',
             desired_capabilities=getattr(DesiredCapabilities, browser).copy()
         )
+        self.driver.maximize_window()
         login(self.driver)
 
     def tearDown(self):
@@ -69,7 +56,7 @@ class FunctionalTests(unittest.TestCase):
 
         settings = create_page.settings
         income = settings.income
-        hide_menu(self.driver)
+        create_page.hide_menu()
         self.assertEqual(text_unselected, income.get_text(), "Неправильный текст в блоке с доходом")
         income.toggle()
         income.greater.click()
@@ -82,7 +69,7 @@ class FunctionalTests(unittest.TestCase):
         create_page.open()
         slider = create_page.settings.age
         slider.toggle()
-        hide_menu(self.driver)
+        create_page.hide_menu()
 
         slider.move_left_slider(100)
         slider.move_right_slider(-100)
@@ -100,7 +87,7 @@ class FunctionalTests(unittest.TestCase):
 
         income = create_page.settings.income
         income.toggle()
-        hide_menu(self.driver)
+        create_page.hide_menu()
 
         income.less.click()
         income.greater.click()
@@ -120,7 +107,7 @@ class FunctionalTests(unittest.TestCase):
         ads_form.set_title(Constants.TITLE)
         ads_form.set_text(Constants.TEXT)
         ads_form.set_image(Constants.IMG_PATH)
-        WebDriverWait(self.driver, 30, 0.1).until(lambda d: loading_image(d))
+        ads_form.wait_picture()
         ads_form.submit()
 
         banner = ads_form.added_banner
@@ -135,15 +122,17 @@ class FunctionalTests(unittest.TestCase):
         settings = create_page.settings
         slider = settings.age
         slider.toggle()
-        hide_menu(self.driver)
+        create_page.hide_menu()
 
         assert slider.left_slider.text not in slider.get_text() and slider.right_slider.text not in slider.get_text()
         slider.move_left_slider(100)
         assert slider.left_slider.text in slider.get_text() and slider.right_slider.text not in slider.get_text()
-        slider.move_right_slider(-100)
+        slider.move_right_slider(-300)
         assert slider.left_slider.text in slider.get_text() and slider.right_slider.text in slider.get_text()
         slider.move_left_slider(-100)
         assert slider.left_slider.text not in slider.get_text() and slider.right_slider.text in slider.get_text()
+        slider.move_left_slider(200)
+        self.assertEqual(slider.left_slider.text, slider.right_slider.text, "Левый слайдер заехал за правый")
 
     def test_projection_age_text(self):
         create_page = CreatePage(self.driver)
@@ -152,7 +141,7 @@ class FunctionalTests(unittest.TestCase):
         settings = create_page.settings
         slider = settings.age
         slider.toggle()
-        hide_menu(self.driver)
+        create_page.hide_menu()
         slider.move_left_slider(100)
         projection = create_page.projection
         assert slider.get_text() == projection.age.text
@@ -171,7 +160,7 @@ class FunctionalTests(unittest.TestCase):
         ads_form.set_title(Constants.TITLE)
         ads_form.set_text(Constants.TEXT)
         ads_form.set_image(Constants.IMG_PATH)
-        WebDriverWait(self.driver, 30, 0.1).until(lambda d: loading_image(d))
+        ads_form.wait_picture()
         ads_form.submit()
 
         banner = BannerPreview(self.driver)
@@ -188,8 +177,6 @@ class FunctionalTests(unittest.TestCase):
 
         campaign_pages = CampaignsPage(self.driver)
         campaign_pages.edit_last.click()
-        banner_info_new = banner.get_info()
-        income_info_new = income.get_checked()
         self.assertEqual(banner_info, banner.get_info(), "Значения в редактировании не совпадают с исходными")
         self.assertEqual(income_info, income.get_checked(), "Значения в редактировании не совпадают с исходными")
 
